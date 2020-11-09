@@ -30,3 +30,9 @@
 *.exe
 *.out
 *.app
+
+#other
+cmake-build-debug/
+.*
+!.gitignore
+CMakeLists.txt
