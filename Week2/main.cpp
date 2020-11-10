@@ -44,13 +44,30 @@ public:
         using value_type = T;
         using reference = T&;
         using pointer = T*;
-        iterator(pointer ptr):m_ptr(ptr){}
+        iterator(pointer ptr, int idx, int length):m_ptr(ptr),m_idx(idx),m_length(length){}
 
         reference operator*() {return *m_ptr;}
         pointer operator->() {return m_ptr; }
 
-        self_type& operator++(){self_type temp = *this;m_ptr+=2;return temp;}
-        self_type operator++(int){m_ptr+=2;return *this;}
+        self_type& operator++(){
+            self_type temp = *this;
+            m_ptr++;
+            m_idx++;
+            if(m_idx<m_length){
+                m_ptr++;
+                m_idx++;
+            }
+            return temp;
+        }
+        self_type operator++(int){
+            m_ptr++;
+            m_idx++;
+            if(m_idx<m_length){
+                m_ptr++;
+                m_idx++;
+            }
+            return *this;
+        }
         self_type& operator--(){self_type temp = *this;m_ptr-=2;return temp;}
         self_type operator--(int){m_ptr-=2;return *this;}
 
@@ -59,39 +76,13 @@ public:
 
     private:
         pointer m_ptr;
-    };
-
-    iterator begin() { return iterator(m_data); }
-    iterator end() {
-        if(m_size%2==0) return iterator(m_data+m_size);
-        else return iterator(m_data+m_size+1);
-    }
-
-    class iterator2{
-    public:
-        using self_type = iterator2;
-        using value_type = T;
-        using reference = T&;
-        using pointer = T*;
-        iterator2(pointer ptr, int idx):m_ptr(ptr),m_idx(idx){}
-
-        reference operator*() {return *m_ptr;}
-        pointer operator->() {return m_ptr; }
-
-        self_type& operator++(){self_type temp = *this;m_ptr+=2;m_idx+=2;return temp;}
-        self_type operator++(int){m_ptr+=2;m_idx+=2;return *this;}
-        self_type& operator--(){self_type temp = *this;m_ptr-=2;m_idx-=2;return temp;}
-        self_type operator--(int){m_ptr-=2;m_idx-=2;return *this;}
-        bool operator== ( const self_type& other ) const { return m_ptr == other.m_ptr ; }
-        bool operator!= ( const self_type& other ) const { return m_ptr != other.m_ptr; }
-        bool operator < ( const self_type& other ) const { return m_idx < other.m_idx ;}
-    private:
-        pointer m_ptr;
+        int m_length;
         int m_idx;
     };
 
-    iterator2 begin2() { return iterator2(m_data, 0); }
-    iterator2 end2() { return iterator2(m_data+m_size, m_size); }
+    iterator begin() { return iterator(m_data,0, m_size); }
+    iterator end() { return iterator(m_data+m_size,m_size, m_size);}
+
     
 private:
     T* m_data;
@@ -128,11 +119,7 @@ int main() {
         output2.push_back(*i);
         cout<<"skip element output using iterator 1: "<<*i<<endl;
     }
-    for(vector_data<int>::iterator2 i2 = input2.begin2(); i2 < input2.end2(); i2++)
-    {
-        output3.push_back(*i2);
-        cout<<"skip element output using iterator 2: "<<*i2<<endl;
-    }
+
     //skip element using lambda expression
     vector<int> output4(output.size());
     bool condition = true;
