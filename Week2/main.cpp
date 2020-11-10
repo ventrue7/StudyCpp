@@ -55,19 +55,17 @@ public:
         self_type operator--(int){m_ptr-=2;return *this;}
 
         bool operator== ( const self_type& other ) const { return m_ptr == other.m_ptr ; }
-        bool operator!= ( const self_type& other ) const {
-            self_type temp = other;
-            temp.m_ptr+=1;
-            bool temp_condition = m_ptr != temp.m_ptr;
-            return m_ptr != other.m_ptr&&temp_condition ;
-        }
+        bool operator!= ( const self_type& other ) const {return m_ptr != other.m_ptr;}
 
     private:
         pointer m_ptr;
     };
 
     iterator begin() { return iterator(m_data); }
-    iterator end() { return iterator(m_data+m_size); }
+    iterator end() {
+        if(m_size%2==0) return iterator(m_data+m_size);
+        else return iterator(m_data+m_size+1);
+    }
 
     class iterator2{
     public:
@@ -114,7 +112,7 @@ template <typename C> void foo(const C& c, typename C::const_iterator i){
 
 int main() {
     //skip element example
-    vector<int> input = {2,4,6,8,10,12,14,16,18,20,22,24};
+    vector<int> input = {2,4,6,8,10,12,14,16,18,20,22};
     vector<int> output = skip_element(input);
     vector_data<int> input2 (input);
     vector<int> output2, output3;
