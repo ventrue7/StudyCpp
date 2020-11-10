@@ -4,7 +4,7 @@
 #include <type_traits>
 using namespace std;
 
-//an iterator that skips every other element in a vector
+//an function that skips every other element in a vector
 template<typename T>
 vector<T> skip_element(vector<T> input){
     vector<T> output;
@@ -13,6 +13,81 @@ vector<T> skip_element(vector<T> input){
     }
     return output;
 }
+
+//an iterator that skips every other element in a vector
+template <typename T>
+class vector_data{
+public:
+    vector_data(const vector<T> data){
+        m_size = data.size();
+        m_data  = new T[m_size];
+        for(int i = 0; i <m_size;++i){
+            m_data[i] = data[i];
+        }
+    }
+    ~vector_data(){
+        delete [] m_data;
+    }
+
+    class iterator{
+    public:
+        using self_type = iterator;
+        using value_type = T;
+        using reference = T&;
+        using pointer = T*;
+        iterator(pointer ptr):m_ptr(ptr){}
+
+        reference operator*() {return *m_ptr;}
+        pointer operator->() {return m_ptr; }
+
+        self_type& operator++(){self_type temp = *this;m_ptr+=2;return temp;}
+        self_type operator++(int){m_ptr+=2;return *this;}
+        self_type& operator--(){self_type temp = *this;m_ptr-=2;return temp;}
+        self_type operator--(int){m_ptr-=2;return *this;}
+
+        bool operator== ( const self_type& other ) const { return m_ptr == other.m_ptr ; }
+        bool operator!= ( const self_type& other ) const { return m_ptr != other.m_ptr ; }
+
+    private:
+        pointer m_ptr;
+    };
+
+    iterator begin() { return iterator(m_data); }
+    iterator end() { return iterator(m_data+m_size); }
+    iterator end_plus_one() { return iterator(m_data+m_size+1); }
+
+    class iterator2{
+    public:
+        using self_type = iterator2;
+        using value_type = T;
+        using reference = T&;
+        using pointer = T*;
+        iterator2(pointer ptr, int idx):m_ptr(ptr),m_idx(idx){}
+
+        reference operator*() {return *m_ptr;}
+        pointer operator->() {return m_ptr; }
+
+        self_type& operator++(){self_type temp = *this;m_ptr+=2;m_idx+=2;return temp;}
+        self_type operator++(int){m_ptr+=2;m_idx+=2;return *this;}
+        self_type& operator--(){self_type temp = *this;m_ptr-=2;m_idx-=2;return temp;}
+        self_type operator--(int){m_ptr-=2;m_idx-=2;return *this;}
+        bool operator== ( const self_type& other ) const { return m_ptr == other.m_ptr ; }
+        bool operator!= ( const self_type& other ) const { return m_ptr != other.m_ptr ; }
+        bool operator < ( const self_type& other ) const { return m_idx < other.m_idx ;}
+    private:
+        pointer m_ptr;
+        int m_idx;
+    };
+
+    iterator2 begin2() { return iterator2(m_data, 0); }
+    iterator2 end2() { return iterator2(m_data+m_size, m_size); }
+    
+private:
+    T* m_data;
+    int m_size;
+};
+
+
 //SFINAE (substitution failure is not an error)
 template<size_t N> void foo(const int (&arr)[N], const int *p){
     cout<< "Array of "<<N<<", distance "<<p-&arr[0]<<endl;
@@ -26,12 +101,24 @@ template <typename C> void foo(const C& c, typename C::const_iterator i){
 
 int main() {
     //skip element example
-    vector<int> input = {2, 5, 6, 11, 13, 17, 19, 23, 26};
+    vector<int> input = {2,4,6,8,10,12,14,16,18,20,22};
     vector<int> output = skip_element(input);
-    //lambda expression
-    vector<int> output2(output.size());
+    vector_data<int> input2 (input);
+    vector<int> output2, output3;
+    for(vector_data<int>::iterator i = input2.begin(); (i != input2.end())&&(i != input2.end_plus_one()); i++)
+    {
+        output2.push_back(*i);
+        cout<<"skip element output using iterator 1: "<<*i<<endl;
+    }
+    for(vector_data<int>::iterator2 i2 = input2.begin2(); i2 < input2.end2(); i2++)
+    {
+        output3.push_back(*i2);
+        cout<<"skip element output using iterator 2: "<<*i2<<endl;
+    }
+    //skip element using lambda expression
+    vector<int> output4(output.size());
     bool condition = true;
-    copy_if(input.begin(), input.end(), output2.begin(),
+    copy_if(input.begin(), input.end(), output4.begin(),
             [&condition](int i) {
             condition = !condition;
             return !condition;
