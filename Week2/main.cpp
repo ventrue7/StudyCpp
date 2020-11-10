@@ -4,6 +4,15 @@
 #include <type_traits>
 using namespace std;
 
+
+//print function of iterator
+template<class It>
+void print(It start, It end) {
+    for (; start != end; ++start) {
+        cout << *start << endl;
+    }
+}
+
 //an function that skips every other element in a vector
 template<typename T>
 vector<T> skip_element(vector<T> input){
@@ -46,7 +55,12 @@ public:
         self_type operator--(int){m_ptr-=2;return *this;}
 
         bool operator== ( const self_type& other ) const { return m_ptr == other.m_ptr ; }
-        bool operator!= ( const self_type& other ) const { return m_ptr != other.m_ptr ; }
+        bool operator!= ( const self_type& other ) const {
+            self_type temp = other;
+            temp.m_ptr+=1;
+            bool temp_condition = m_ptr != temp.m_ptr;
+            return m_ptr != other.m_ptr&&temp_condition ;
+        }
 
     private:
         pointer m_ptr;
@@ -54,7 +68,6 @@ public:
 
     iterator begin() { return iterator(m_data); }
     iterator end() { return iterator(m_data+m_size); }
-    iterator end_plus_one() { return iterator(m_data+m_size+1); }
 
     class iterator2{
     public:
@@ -72,7 +85,7 @@ public:
         self_type& operator--(){self_type temp = *this;m_ptr-=2;m_idx-=2;return temp;}
         self_type operator--(int){m_ptr-=2;m_idx-=2;return *this;}
         bool operator== ( const self_type& other ) const { return m_ptr == other.m_ptr ; }
-        bool operator!= ( const self_type& other ) const { return m_ptr != other.m_ptr ; }
+        bool operator!= ( const self_type& other ) const { return m_ptr != other.m_ptr; }
         bool operator < ( const self_type& other ) const { return m_idx < other.m_idx ;}
     private:
         pointer m_ptr;
@@ -101,11 +114,18 @@ template <typename C> void foo(const C& c, typename C::const_iterator i){
 
 int main() {
     //skip element example
-    vector<int> input = {2,4,6,8,10,12,14,16,18,20,22};
+    vector<int> input = {2,4,6,8,10,12,14,16,18,20,22,24};
     vector<int> output = skip_element(input);
     vector_data<int> input2 (input);
     vector<int> output2, output3;
-    for(vector_data<int>::iterator i = input2.begin(); (i != input2.end())&&(i != input2.end_plus_one()); i++)
+
+    cout<<"STL iterator"<<endl;
+    print( input.begin(), input.end() );
+    cout<<"custom iterator"<<endl;
+    print( input2.begin(), input2.end() );
+
+
+    for(vector_data<int>::iterator i = input2.begin(); i != input2.end(); i++)
     {
         output2.push_back(*i);
         cout<<"skip element output using iterator 1: "<<*i<<endl;
