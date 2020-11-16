@@ -27,15 +27,14 @@ vector<T> skip_element(vector<T> input){
 template <typename T>
 class vector_data{
 public:
-    vector_data(const vector<T> data){
+    vector_data(vector<T>& data, int step=2){
         m_size = data.size();
-        m_data  = new T[m_size];
-        for(int i = 0; i <m_size;++i){
-            m_data[i] = data[i];
-        }
+        m_data = &data[0];
+        m_step = step;
     }
     ~vector_data(){
-        delete [] m_data;
+        m_data = nullptr;
+        delete m_data;
     }
 
     class iterator{
@@ -44,49 +43,52 @@ public:
         using value_type = T;
         using reference = T&;
         using pointer = T*;
-        iterator(pointer ptr, int idx, int length):m_ptr(ptr),m_idx(idx),m_length(length){}
+        iterator(pointer ptr, int idx, int length, int step):m_ptr(ptr),m_idx(idx),m_length(length),m_step(step){}
 
         reference operator*() {return *m_ptr;}
         pointer operator->() {return m_ptr; }
 
-        self_type& operator++(){
+        self_type &operator++() {
             self_type temp = *this;
-            m_ptr++;
-            m_idx++;
-            if(m_idx<m_length){
-                m_ptr++;
-                m_idx++;
-            }
+            m_ptr += min(m_step, m_length - m_idx);
+            m_idx += min(m_step, m_length - m_idx);
             return temp;
         }
         self_type operator++(int){
-            m_ptr++;
-            m_idx++;
-            if(m_idx<m_length){
-                m_ptr++;
-                m_idx++;
-            }
+            m_ptr += min(m_step, m_length - m_idx);
+            m_idx += min(m_step, m_length - m_idx);
             return *this;
         }
-        self_type& operator--(){self_type temp = *this;m_ptr-=2;return temp;}
-        self_type operator--(int){m_ptr-=2;return *this;}
+        self_type& operator--(){
+            self_type temp = *this;
+            m_ptr -= min(m_step, m_idx);
+            m_idx -= min(m_step, m_idx);
+            return temp;
+        }
+        self_type operator--(int){
+            m_ptr -= min(m_step, m_idx);
+            m_idx -= min(m_step, m_idx);
+            return *this;
+        }
 
         bool operator== ( const self_type& other ) const { return m_ptr == other.m_ptr ; }
-        bool operator!= ( const self_type& other ) const {return m_ptr != other.m_ptr;}
+        bool operator!= ( const self_type& other ) const { return m_ptr != other.m_ptr; }
 
     private:
         pointer m_ptr;
         int m_length;
         int m_idx;
+        int m_step;
     };
 
-    iterator begin() { return iterator(m_data,0, m_size); }
-    iterator end() { return iterator(m_data+m_size,m_size, m_size);}
+    iterator begin() { return iterator(m_data,0, m_size, m_step); }
+    iterator end() { return iterator(m_data+m_size,m_size, m_size, m_step);}
 
     
 private:
-    T* m_data;
+    T* m_data = new T;
     int m_size;
+    int m_step;
 };
 
 
@@ -103,32 +105,33 @@ template <typename C> void foo(const C& c, typename C::const_iterator i){
 
 int main() {
     //skip element example
-    vector<int> input = {2,4,6,8,10,12,14,16,18,20,22};
+    vector<int> input = {1,2,3,4,5};
     vector<int> output = skip_element(input);
     vector_data<int> input2 (input);
     vector<int> output2, output3;
+
 
     cout<<"STL iterator"<<endl;
     print( input.begin(), input.end() );
     cout<<"custom iterator"<<endl;
     print( input2.begin(), input2.end() );
-
-
-    for(vector_data<int>::iterator i = input2.begin(); i != input2.end(); i++)
-    {
-        output2.push_back(*i);
-        cout<<"skip element output using iterator 1: "<<*i<<endl;
-    }
-
-    //skip element using lambda expression
-    vector<int> output4(output.size());
-    bool condition = true;
-    copy_if(input.begin(), input.end(), output4.begin(),
-            [&condition](int i) {
-            condition = !condition;
-            return !condition;
-            }
-    );
+//
+//
+//    for(vector_data<int>::iterator i = input2.begin(); i != input2.end(); i++)
+//    {
+//        output2.push_back(*i);
+//        cout<<"skip element output using iterator 1: "<<*i<<endl;
+//    }
+//
+//    //skip element using lambda expression
+//    vector<int> output4(output.size());
+//    bool condition = true;
+//    copy_if(input.begin(), input.end(), output4.begin(),
+//            [&condition](int i) {
+//            condition = !condition;
+//            return !condition;
+//            }
+//    );
 
     //lower bound; upper bound; equal range
     vector<int> bound_data = {4,5,5,5,6,7,8,9,10};
