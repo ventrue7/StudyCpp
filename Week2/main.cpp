@@ -13,6 +13,7 @@ void print(It start, It end) {
     }
 }
 
+
 //an function that skips every other element in a vector
 template<typename T>
 vector<T> skip_element(vector<T> input){
@@ -25,16 +26,11 @@ vector<T> skip_element(vector<T> input){
 
 //an iterator that skips every other element in a vector
 template <typename T>
-class vector_data{
+class iterator_support{
 public:
-    vector_data(vector<T>& data, int step=2){
-        m_size = data.size();
-        m_data = &data[0];
-        m_step = step;
+    iterator_support(){
     }
-    ~vector_data(){
-        m_data = nullptr;
-        delete m_data;
+    ~iterator_support(){
     }
 
     class iterator{
@@ -43,32 +39,37 @@ public:
         using value_type = T;
         using reference = T&;
         using pointer = T*;
-        iterator(pointer ptr, int idx, int length, int step):m_ptr(ptr),m_idx(idx),m_length(length),m_step(step){}
+        iterator(vector<T>& data, int idx, int step = 2){
+            m_ptr = &data[idx];
+            m_idx = idx;
+            m_length = data.size();
+            m_step = step;
+        }
 
         reference operator*() {return *m_ptr;}
         pointer operator->() {return m_ptr; }
 
         self_type &operator++() {
-            self_type temp = *this;
             m_ptr += min(m_step, m_length - m_idx);
             m_idx += min(m_step, m_length - m_idx);
-            return temp;
+            return *this;
         }
         self_type operator++(int){
+            self_type temp = *this;
             m_ptr += min(m_step, m_length - m_idx);
             m_idx += min(m_step, m_length - m_idx);
-            return *this;
+            return temp;
         }
         self_type& operator--(){
+            m_ptr -= min(m_step, m_idx);
+            m_idx -= min(m_step, m_idx);
+            return *this;
+        }
+        self_type operator--(int){
             self_type temp = *this;
             m_ptr -= min(m_step, m_idx);
             m_idx -= min(m_step, m_idx);
             return temp;
-        }
-        self_type operator--(int){
-            m_ptr -= min(m_step, m_idx);
-            m_idx -= min(m_step, m_idx);
-            return *this;
         }
 
         bool operator== ( const self_type& other ) const { return m_ptr == other.m_ptr ; }
@@ -81,14 +82,9 @@ public:
         int m_step;
     };
 
-    iterator begin() { return iterator(m_data,0, m_size, m_step); }
-    iterator end() { return iterator(m_data+m_size,m_size, m_size, m_step);}
+    iterator begin(vector<T>& data ) { return iterator(data,0); }
+    iterator end(vector<T>& data) { return iterator(data,data.size());}
 
-    
-private:
-    T* m_data = new T;
-    int m_size;
-    int m_step;
 };
 
 
@@ -105,16 +101,16 @@ template <typename C> void foo(const C& c, typename C::const_iterator i){
 
 int main() {
     //skip element example
-    vector<int> input = {1,2,3,4,5};
+    vector<int> input = {1,2,3,4};
     vector<int> output = skip_element(input);
-    vector_data<int> input2 (input);
+    iterator_support<int> input2{};
     vector<int> output2, output3;
 
 
     cout<<"STL iterator"<<endl;
     print( input.begin(), input.end() );
     cout<<"custom iterator"<<endl;
-    print( input2.begin(), input2.end() );
+    print( input2.begin(input), input2.end(input) );
 //
 //
 //    for(vector_data<int>::iterator i = input2.begin(); i != input2.end(); i++)
