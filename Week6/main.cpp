@@ -189,10 +189,12 @@ int main() {
 
         //std::cout<<"current date "<<i<<","<<m<<","<<y<<"\n";
         //check if skipping any month
-        if(!( (m == mold+1) ||(m == 1 && mold == 12)))
-            std::cout<<"wrong month of date increment: \n"
+        if(!( (m == mold+1) ||(m == 1 && mold == 12 && y == yold+1) ))
+            std::cout<<"wrong month or year of date increment: \n"
                      << "date: " << i << "\n"
                      << "month,year: "<< m << "," << y<< "\n";
+
+
 
         mold = m; yold = y;
 
