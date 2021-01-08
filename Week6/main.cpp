@@ -1,41 +1,13 @@
 #include <iostream>
 #include <boost/test/unit_test.hpp>
 #include <boost/test/framework.hpp>
-
+#include <boost/assert.hpp>
+#include <ql/time/date.hpp>
+#include <ql/time/period.hpp>
 #define BOOST_TEST_DYN_LINK
 
 namespace datelib {
 
-    enum Period {
-        Month = 1,
-        Year = 12
-    };
-
-    enum Month {
-        January = 0,
-        February = 1,
-        March = 2,
-        April = 3,
-        May = 4,
-        June = 5,
-        July = 6,
-        August = 7,
-        September = 8,
-        October = 9,
-        November = 10,
-        December = 11,
-        Jan = 0,
-        Feb = 1,
-        Mar = 2,
-        Apr = 3,
-        Jun = 5,
-        Jul = 6,
-        Aug = 7,
-        Sep = 8,
-        Oct = 9,
-        Nov = 10,
-        Dec = 11
-    };
 
     class Date {
     public:
@@ -54,6 +26,10 @@ namespace datelib {
         }
 
         Date() {};
+
+        Date(const QuantLib::Date &ql_date){
+            m_date = convertDate(ql_date);
+        }
 
         int year() const {
             return m_date / 12+1900;
@@ -81,6 +57,25 @@ namespace datelib {
             return maximum_date;
         }
 
+        int static convertPeriod(const QuantLib::Period &p){
+            switch(p.units()) {
+                case QuantLib::Months:
+                    return p.length();
+                case QuantLib::Years:
+                     return p.length()*12;
+                default:
+                    throw std::runtime_error("Only Month or Year is supported");
+
+            }
+        }
+
+
+        int static convertDate(const QuantLib::Date &ql_date){
+            int temp_date = (ql_date.month()-1)+(ql_date.year()-1900)*12;
+            checkDate(temp_date);
+            return temp_date;
+        }
+
         void static checkDate(int &date) {
             if (date < getMinDate()) {
                 throw std::runtime_error("date is smaller than min date");
@@ -94,34 +89,6 @@ namespace datelib {
             return m_date;
         }
 
-
-        Date &operator+=(int months) {
-            int temp_date = m_date + months;
-            checkDate(temp_date);
-            m_date = temp_date;
-            return *this;
-        }
-
-        Date &operator+=(const Period &p) {
-            int temp_date = m_date + p;
-            checkDate(temp_date);
-            m_date = temp_date;
-            return *this;
-        }
-
-        Date &operator-=(const Period &p) {
-            int temp_date = m_date - p;
-            checkDate(temp_date);
-            m_date = temp_date;
-            return *this;
-        }
-
-        Date &operator-=(int months) {
-            int temp_date = m_date - months;
-            checkDate(temp_date);
-            m_date = temp_date;
-            return *this;
-        }
 
         Date &operator++() {
             int temp_date = m_date + 1;
@@ -149,6 +116,23 @@ namespace datelib {
             return temp;
         }
 
+
+        Date &operator+=(int months) {
+            int temp_date = m_date + months;
+            checkDate(temp_date);
+            m_date = temp_date;
+            return *this;
+        }
+
+
+        Date &operator-=(int months) {
+            int temp_date = m_date - months;
+            checkDate(temp_date);
+            m_date = temp_date;
+            return *this;
+        }
+
+
         Date operator+(int months) const {
             Date temp(*this);
             temp += months;
@@ -161,18 +145,32 @@ namespace datelib {
             return temp;
         }
 
+        Date &operator+=(const QuantLib::Period &p) {
+            int temp_date = m_date + convertPeriod(p);
+            checkDate(temp_date);
+            m_date = temp_date;
+            return *this;
+        }
 
-        Date operator+(const Period &p) const {
+        Date &operator-=(const QuantLib::Period &p) {
+            int temp_date = m_date - convertPeriod(p);
+            checkDate(temp_date);
+            m_date = temp_date;
+            return *this;
+        }
+
+        Date operator+(const QuantLib::Period &p) const {
             Date temp(*this);
-            temp += p;
+            temp += convertPeriod(p);
             return temp;
         }
 
-        Date operator-(const Period &p) const {
+        Date operator-(const QuantLib::Period &p) const {
             Date temp(*this);
-            temp -= p;
+            temp -= convertPeriod(p);
             return temp;
         }
+
 
 
         friend bool operator<(const Date &d1, const Date &d2) {
@@ -200,130 +198,263 @@ namespace datelib {
         }
 
 
+        friend bool operator<(const QuantLib::Date &d1, const Date &d2) {
+            return (convertDate(d1) < d2.getDate());
+        }
+
+        friend bool operator<(const Date &d1, const QuantLib::Date &d2) {
+            return (d1.getDate() < convertDate(d2));
+        }
+
+        friend bool operator<=(const QuantLib::Date &d1, const Date &d2) {
+            return (convertDate(d1) <= d2.getDate());
+        }
+
+        friend bool operator<=(const Date &d1, const QuantLib::Date &d2) {
+            return (d1.getDate() <= convertDate(d2));
+        }
+
+        friend bool operator>(const QuantLib::Date &d1, const Date &d2) {
+            return (convertDate(d1) > d2.getDate());
+        }
+
+        friend bool operator>(const Date &d1, const QuantLib::Date &d2) {
+            return (d1.getDate() > convertDate(d2));
+        }
+
+        friend bool operator>=(const QuantLib::Date &d1, const Date &d2) {
+            return (convertDate(d1) >= d2.getDate());
+        }
+
+        friend bool operator>=(const Date &d1, const QuantLib::Date &d2) {
+            return (d1.getDate() >= convertDate(d2));
+        }
+
+        friend bool operator==(const QuantLib::Date &d1, const Date &d2) {
+            return (convertDate(d1) == d2.getDate());
+        }
+
+        friend bool operator==(const Date &d1, const QuantLib::Date &d2) {
+            return (d1.getDate() == convertDate(d2));
+        }
+
+        friend bool operator!=(const QuantLib::Date &d1, const Date &d2) {
+            return (convertDate(d1) != d2.getDate());
+        }
+
+        friend bool operator!=(const Date &d1, const QuantLib::Date &d2) {
+            return (d1.getDate() != convertDate(d2));
+        }
+
+
     private:
         int m_date;
     };
 }
 class DateTest {
 public:
-    static void testConsistency() {
-        int minDate = datelib::Date::minDate().getDate()+1,
-                maxDate = datelib::Date::maxDate().getDate();
 
-        if(datelib::Date::maxDate().month()!=11 || datelib::Date::maxDate().year()!=9999
-        ||datelib::Date::minDate().month()!=0 || datelib::Date::minDate().year()!=1900)
-            std::cout << "max or min date is not correct\n";
-
-//        //unit test for checkDate function
-//        datelib::Date test1(minDate-2);
-//        datelib::Date test2(maxDate+1);
-
-//      unit test for checker in constructor
-//        datelib::Date test3(12,1999);
-//        datelib::Date test4(1,1888);
-
-
-        int mold = datelib::Date(minDate - 1).month(),
-                yold = datelib::Date(minDate - 1).year();
-
-        for (int i = minDate; i <= maxDate; i++) {
-
-            datelib::Date t(i);
-            int serial = t.getDate();
-
-            // check serial number consistency
-            if (serial != i)
-                std::cout << "inconsistent date\n"
-                          << "original: " << i << "\n"
-                          << "original: " << serial << "\n";
-
-            int m = t.month(),
-                    y = t.year();
-
-            //std::cout<<"current date "<<i<<","<<m<<","<<y<<"\n";
-            //check if skipping any month
-            if (!((m == mold + 1) || (m == 0 && mold == 11 && y == yold + 1)))
-                std::cout << "wrong month or year of date increment: \n"
-                          << "date: " << i << "\n"
-                          << "month,year: " << m << "," << y << "\n";
-
-
-            mold = m;
-            yold = y;
-
-            // check month definition
-            if (m < 0 || m > 11)
-                std::cout << "invalid month: \n"
-                          << "date:  " << i << "\n"
-                          << "month: " << m << "\n";
-
-            // create the same date with a different constructor
-            datelib::Date s(m, y);
-            // check number consistency
-            serial = s.getDate();
-            if (serial != i)
-                std::cout << "inconsistent date:\n"
-                          << "date: " << i << "\n"
-                          << "cloned date: " << serial << "\n"
-                          << "month,year: " << m << "," << y << "\n";
-        }
-
-    }
-
-    static void isoDates() {
+    static void testConstructor(){
         datelib::Date d(0, 2006);
-        if (d.month() != datelib::January ||
-            d.year() != 2006 ||
-            d.getDate() != (2006-1900)*12+0) {
-            std::cout << "Iso date failed\n"
-                      << " month:         " << d.month() << "\n"
-                      << " year:          " << d.year();
-        }
-        datelib::Date d0 = d;
-        datelib::Date d1 = ++d0;
-        datelib::Date d2 = d0++;
-        datelib::Date d3 = d0 + datelib::Month;
-        datelib::Date d4 = d0 + datelib::Year;
+        datelib::Date d1 ((2006-1900)*12+0);
 
-        if (d1.month() != d2.month() || d1.year() != d2.year() || d1 != d2)
-            std::cout << "Pre-increment or Post-increment is not correct\n";
-        if (d1 > d0 || d1 >= d0 || d1 == d0)
-            std::cout << "operator larger than, larger than or equal to, equal to is not correct\n";
-        if (d3.month() != d0.month() + 1 || d3.year() != d0.year())
-            std::cout << "Add period month is not correct\n";
-        if (d4.month() != d0.month() || d4.year() != d0.year() + 1)
-            std::cout << "Add period year is not correct\n";
-        if (d3 != d0+1 || d4!= d0 +12)
-            std::cout << "Add month or year is not correct\n";
+        //test constructor
+        BOOST_ASSERT_MSG(d1==d,"constructor is not correct");
 
-        datelib::Date d5 = --d0;
-        datelib::Date d6 = d0--;
-        datelib::Date d7 = d0 - datelib::Month;
-        datelib::Date d8 = d0 - datelib::Year;
+        //test getDate()
+        BOOST_ASSERT_MSG(d.getDate()==(2006-1900)*12+0,"getDate function is not correct");
 
-        if (d5.month() != d6.month() || d5.year() != d6.year() || d5 != d6)
-            std::cout << "Pre-decrement or Post-decrement is not correct\n";
-        if (d5 < d0 || d5 <= d0 || d5 == d0)
-            std::cout << "Operator smaller than, smaller than or euqal to, equal to is not correct\n";
 
-        if (!((d7.month() == d0.month() - 1 && d7.year() == d0.year())||
-        (d0.month()==0 && d7.month()==11 && d7.year() == d0.year()-1)))
-            std::cout << "Subtract period month is not correct\n";
-        if (d8.month()!=d0.month() || d8.year()!=d0.year()-1)
-            std::cout << "Subtract period year is not correct\n";
-        if (d8 != d0 -12 || d7 != d0-1)
-            std::cout << "Subtract month or year is not correct\n";
+}
+
+    static void testOperator(){
+        datelib::Date d(0, 2006);
+
+
+        //test operator++(int)
+        datelib::Date d1 = d++;
+        BOOST_ASSERT_MSG(d1+1==d,"Post-increment operator is not correct");
+
+        //test operator++
+        datelib::Date d2 = ++d;
+        BOOST_ASSERT_MSG(d2==d,"Pre-increment operator is not correct");
+
+        //test operator--(int)
+        datelib::Date d3 = d--;
+        BOOST_ASSERT_MSG(d3-1==d,"Post-decrement is not correct");
+
+        //test operator--
+        datelib::Date d4 = --d;
+        BOOST_ASSERT_MSG(d4==d,"Pre-decrement operator is not correct");
+
+        //test operator+=(int months)
+        datelib::Date d5 = d+1;++d;
+        BOOST_ASSERT_MSG(d5==d,"Operator+=(int months) is not correct");
+
+        //test operator-=(int months)
+        datelib::Date d6 = d-1;--d;
+        BOOST_ASSERT_MSG(d6==d,"Operator-=(int months) is not correct");
+
+        //test &operator+=(int months)
+        datelib::Date d7 = d+1;d+=1;
+        BOOST_ASSERT_MSG(d7==d,"Operator+=(int months) is not correct");
+
+        //test &operator+=(int months)
+        datelib::Date d8 = d-1;d-=1;
+        BOOST_ASSERT_MSG(d8==d,"Operator-=(int months) is not correct");
+
+        //test operator<
+        datelib::Date d9 = d-1;
+        BOOST_ASSERT_MSG(d9<d,"Operator< is not correct");
+
+        //test operator<=
+        datelib::Date d10 = d-1;
+        datelib::Date d11 = d;
+        BOOST_ASSERT_MSG(d10<=d,"Operator<= is not correct");
+        BOOST_ASSERT_MSG(d11<=d,"Operator<= is not correct");
+
+        //test operator>
+        datelib::Date d12 = d+1;
+        BOOST_ASSERT_MSG(d12>d,"Operator> is not correct");
+
+        //test >=
+        datelib::Date d13 = d+1;
+        datelib::Date d14 = d;
+        BOOST_ASSERT_MSG(d13>=d,"Operator>= is not correct");
+        BOOST_ASSERT_MSG(d14>=d,"Operator>= is not correct");
+
+        //test  operator==
+        datelib::Date d15 = d;
+        BOOST_ASSERT_MSG(d15==d,"Operator= is not correct");
+
+        //test operator!=
+        datelib::Date d16 = d+1;
+        BOOST_ASSERT_MSG(d16!=d,"Operator!= is not correct");
+
 
     }
 
+    static void testQuantPeriod(){
+        //test QuantLib period
+        datelib::Date d(0, 2006);
+
+        //test operator+ period
+        QuantLib::Period p_m(QuantLib::Frequency::Monthly);
+        QuantLib::Period p_y(QuantLib::Frequency::Annual);
+        datelib::Date d1 = d + p_m;
+        datelib::Date d2 = d + p_y;
+        BOOST_ASSERT_MSG(d+1==d1,"Add Period month is not correct");
+        BOOST_ASSERT_MSG(d+12==d2,"Add Period year is not correct");
+
+        //test operator- period
+        datelib::Date d3 = d - p_m;
+        datelib::Date d4 = d - p_y;
+        BOOST_ASSERT_MSG(d-1==d3,"Subtract Period month is not correct");
+        BOOST_ASSERT_MSG(d-12==d4,"Subtract Period year is not correct");
+
+        //test operator+= period
+        datelib::Date d5 = d; d5+= p_m;
+        datelib::Date d6 = d; d6+= p_y;
+        BOOST_ASSERT_MSG(d+1==d5,"Add Period month is not correct");
+        BOOST_ASSERT_MSG(d+12==d6,"Add Period year is not correct");
+
+        //test operator-= period
+        datelib::Date d7 = d; d7-= p_m;
+        datelib::Date d8 = d; d8-= p_y;
+        BOOST_ASSERT_MSG(d-1==d7,"Subtract Period month is not correct");
+        BOOST_ASSERT_MSG(d-12==d8,"Subtract Period year is not correct");
+
+    }
+
+    static void testMonthYear(){
+        datelib::Date d(0, 2006);
+
+        //test month()
+        BOOST_ASSERT_MSG(d.month() == 0,"month function is not correct");
+
+        //test year()
+        BOOST_ASSERT_MSG(d.year() == 2006,"year function is not correct");
+
+        //test month/year increment()
+        datelib::Date d1 = d+1;
+        datelib::Date d2 = d+12;
+        BOOST_ASSERT_MSG(d1.month() == d.month()+1,"month increment is not correct");
+        BOOST_ASSERT_MSG(d2.month() == d.month() && d2.year()==d.year()+1,"year increment is not correct");
+
+
+    }
+
+    static void testMinMax(){
+
+        //test minDate()
+        datelib::Date d_min = datelib::Date::minDate();
+        BOOST_ASSERT_MSG(d_min.getDate() == 0,"minDate is not correct");
+        BOOST_ASSERT_MSG(d_min.month() == 0 && d_min.year() == 1900,
+                         "month or year of minDate is not correct");
+
+        datelib::Date d_max = datelib::Date::maxDate();
+        BOOST_ASSERT_MSG(d_max.getDate() == (9999-1900)*12+11,"minDate is not correct");
+        BOOST_ASSERT_MSG(d_max.month() == 11 && d_max.year() == 9999,
+                         "month or year of minDate is not correct");
+
+
+}
+
+    static void testQuantlibDate(){
+        //test Quantlib Date
+        QuantLib::Date d(1,QuantLib::Month::Jan,2006);
+        datelib::Date d1(d);
+
+        //test if QuantLib and datelib dates contain the same month and year
+        BOOST_ASSERT_MSG(d.year()==d1.year(),"years of QuantLib and datelib dates are different");
+        //datelib month starts at 0, QuantLib month starts at 1
+        BOOST_ASSERT_MSG( d.month()==d1.month()+1,"months of QuantLib and datelib dates are different");
+
+        //test operator==
+        BOOST_ASSERT_MSG(d==d1,"operator == is not correct");
+        BOOST_ASSERT_MSG(d1==d,"operator == is not correct");
+
+        datelib::Date d2=d1+1;
+        //test operator!=
+        BOOST_ASSERT_MSG(d!=d2,"operator != is not correct");
+        BOOST_ASSERT_MSG(d2!=d,"operator != is not correct");
+
+        datelib::Date d3=d1-2;
+        //test operator<
+        BOOST_ASSERT_MSG(d<d2,"operator < is not correct");
+        BOOST_ASSERT_MSG(d3<d,"operator < is not correct");
+
+        //test operator<=
+        BOOST_ASSERT_MSG(d<=d2,"operator <= is not correct");
+        BOOST_ASSERT_MSG(d3<=d,"operator <= is not correct");
+        BOOST_ASSERT_MSG(d<=d1,"operator <= is not correct");
+        BOOST_ASSERT_MSG(d1<=d,"operator <= is not correct");
+
+
+        //test operator>
+        BOOST_ASSERT_MSG(d>d3,"operator > is not correct");
+        BOOST_ASSERT_MSG(d2>d,"operator > is not correct");
+
+        //test operator>=
+        BOOST_ASSERT_MSG(d>=d3,"operator >= is not correct");
+        BOOST_ASSERT_MSG(d2>=d,"operator >= is not correct");
+        BOOST_ASSERT_MSG(d>=d1,"operator >= is not correct");
+        BOOST_ASSERT_MSG(d1>=d,"operator >= is not correct");
+
+
+    }
 };
 
 
 boost::unit_test::test_suite *init_unit_test_suite(int /*argc*/, char * /*argv*/[]) {
     std::cout << "start test\n";
     boost::unit_test_framework::test_suite *suite = BOOST_TEST_SUITE("Date tests");
-    suite->add(BOOST_TEST_CASE(&DateTest::testConsistency));
-    suite->add(BOOST_TEST_CASE(&DateTest::isoDates));
+    suite->add(BOOST_TEST_CASE(&DateTest::testConstructor));
+    suite->add(BOOST_TEST_CASE(&DateTest::testOperator));
+    suite->add(BOOST_TEST_CASE(&DateTest::testQuantPeriod));
+    suite->add(BOOST_TEST_CASE(&DateTest::testMonthYear));
+    suite->add(BOOST_TEST_CASE(&DateTest::testMinMax));
+    suite->add(BOOST_TEST_CASE(&DateTest::testQuantlibDate));
     boost::unit_test_framework::framework::master_test_suite().add(suite);
     return 0;
 }
