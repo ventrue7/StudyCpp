@@ -39,10 +39,10 @@ public:
         using value_type = T;
         using reference = T&;
         using pointer = T*;
-        iterator(vector<T>& data, int idx, int step = 2){
-            m_ptr = &data[idx];
+        iterator(reference data, int length, int idx, int step = 2){
+            m_ptr = &data;
+            m_length = length;
             m_idx = idx;
-            m_length = data.size();
             m_step = step;
         }
 
@@ -82,8 +82,8 @@ public:
         int m_step;
     };
 
-    iterator begin(vector<T>& data ) { return iterator(data,0); }
-    iterator end(vector<T>& data) { return iterator(data,data.size());}
+    iterator begin(vector<T>& data ) { return iterator(data[0], data.size(),0); }
+    iterator end(vector<T>& data) { return iterator(data[data.size()], data.size(),data.size());}
 
 };
 
@@ -101,11 +101,17 @@ template <typename C> void foo(const C& c, typename C::const_iterator i){
 
 int main() {
     //skip element example
-    vector<int> input = {1,2,3,4};
+    vector<int> input = {1,2,3,4,5};
     vector<int> output = skip_element(input);
     iterator_support<int> input2{};
     vector<int> output2, output3;
 
+    output2 = input;
+
+
+    int i = 3;
+    int *pp;
+    pp = &i;
 
     cout<<"STL iterator"<<endl;
     print( input.begin(), input.end() );

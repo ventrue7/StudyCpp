@@ -68,8 +68,12 @@ public:
             return temp;
         }
 
-        bool operator== ( const self_type& other ) const { return m_it == other.m_it ; }
-        bool operator!= ( const self_type& other ) const { return m_it != other.m_it; }
+        bool operator== ( const self_type& other ) const {
+            return (m_it == other.m_it)&&(m_step==other.m_step)&&(m_begin==other.m_begin)&&(m_end==other.m_end);
+        }
+        bool operator!= ( const self_type& other ) const {
+            return (m_it != other.m_it)||(m_step!=other.m_step)||(m_begin!=other.m_begin)||(m_end!=other.m_end);
+        }
 
     private:
         typename Container<T, std::allocator<T>>::iterator m_it,m_begin,m_end;
@@ -86,8 +90,20 @@ int main() {
 //    skip element example
 //    vector<int> input {1,2,3,4};
 //    iterator_support<int, vector> input2{};
-    list<int> input {1,2,3,4};
+    list<int> input {1,2,3,4,5};
     iterator_support<int, list> input2{};
+    iterator_support<int, list> input4{};
+
+    list<int> input3 {1,2,3,4,5};
+    auto it1 = input2.end(input);
+    auto it2 = input2.end(input);
+    bool xx1 = it1==it2;
+    cout<<xx1<<endl;
+
+    auto it3 = input.end();
+    auto it4 = input.end();
+    bool xx2 = it3==it4;
+    cout<<xx2<<endl;
 
     cout<<"STL iterator"<<endl;
     print( input.begin(), input.end() );
