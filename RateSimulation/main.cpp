@@ -63,23 +63,44 @@ namespace simulationlib{
         std::vector<std::vector<T>> m_rand_matrix;
     };
 
+    class RateInterpolation{
+    public:
+        RateInterpolation(std::vector<double> tenors, std::vector<double> rates):m_rates(rates),m_tenors(tenors){};
+        double getRate(double tenor){
+            int index = std::lower_bound (m_tenors.begin(), m_tenors.end(), tenor) - m_tenors.begin();
+            if(index == 0) return m_rates[0];
+            else if(index >= m_tenors.size()) return m_rates.back();
+            else{
+                double slope = (m_rates[index] - m_rates[index-1])/(m_tenors[index] - m_tenors[index-1]);
+                return m_rates[index-1] + slope*(tenor - m_tenors[index-1]);
+            }
+        }
+    private:
+        std::vector<double> m_tenors;
+        std::vector<double> m_rates;
+    };
+
+
     template <class T>
     class LiborRateSimulation{
     public:
         LiborRateSimulation(size_t paths,unsigned long steps, double maturity, double tau, int numer,
-                            std::vector<T> init_rates, std::vector<T> sigma, std::vector<std::vector<T>> corr)
+                            std::vector<T> init_rates, std::vector<T> init_tenors,
+                            std::vector<T> sigma, std::vector<std::vector<T>> corr)
         :m_paths(paths),m_steps(steps),m_maturity(maturity),m_tau(tau),m_numer(numer),
-        m_init_rates(init_rates),m_sigma(sigma),m_corr(corr),m_rand_matrix{paths, steps,0,1}{
+        m_ri(init_tenors, init_rates),m_sigma(sigma),m_corr(corr),m_rand_matrix{paths, steps,0,1}{
             m_dt = maturity/steps;
         };
 
         std::vector<std::vector<T>> LiborSimulation(){
             double mu = 0;
-            std::vector<T> F(m_paths+1, 0.01);
+            std::vector<T> F(m_paths+1, 0);
+            for(int m = 0; m < F.size();++m)
+                F[m] = m_ri.getRate(m);
+
             std::vector<std::vector<T>> rates(m_paths, std::vector<T> (m_steps, 0));
             for(unsigned long i = 0; i < m_steps;++i){//time step
                 for(int j = 1; j <= m_paths; ++j){//multiple Libor paths
-                    F[0] = m_init_rates[i];
                     if(j < m_numer) {
                         mu = 0;
                         for (int k = j + 1; k < m_numer; ++k) {
@@ -89,13 +110,13 @@ namespace simulationlib{
                     }
                     else{
                         mu = 0;
-                        for (int k = m_numer; k < j; ++k) {
+                        for (int k = m_numer; k <= j; ++k) {
                             mu += (m_corr[j-1][k-1] * m_sigma[k-1]*m_sigma[j-1] * m_tau * F[k - 1])
                                                         / (1 + m_tau * F[k - 1]) *m_dt;
                         }
                     }
-                    F[j]=F[j-1]*exp(mu*m_dt + 0.5*m_sigma[j]*m_sigma[j]*m_dt
-                            +m_sigma[j-1]*m_rand_matrix.getRandNum(j-1,i)*sqrt(m_dt));
+                    F[j]=F[j]*exp(mu*m_dt - 0.5*m_sigma[j]*m_sigma[j]*m_dt+
+                            m_sigma[j-1]*m_rand_matrix.getRandNum(j-1,i)*sqrt(m_dt));
                     rates[j-1][i]=F[j];
                 }
             }
@@ -104,9 +125,9 @@ namespace simulationlib{
 
     private:
         RandomMatrix<T> m_rand_matrix;
+        RateInterpolation m_ri;
         size_t m_paths;//number of swap rates
         unsigned long m_steps;//number of steps
-        std::vector<T> m_init_rates;//initial rates status
         std::vector<std::vector<T>> m_corr;//correlation matrix
         std::vector<T> m_sigma;//rate vol
         double m_maturity;//time to maturity of swaption
@@ -118,16 +139,24 @@ namespace simulationlib{
 
 int main(){
 
-    size_t paths = 3;
+    std::vector<double> tenors {1.0/12.0, 1.0/6.0, 0.25, 0.5, 1,2,3,5,7,10,20,30};
+    std::vector<double> rates {0.09, 0.09, 0.09, 0.09, 0.1,0.16, 0.23,0.49,0.82,1.15,1.69, 1.88};
+    simulationlib::RateInterpolation ri (tenors, rates);
+    double rr = ri.getRate(3.1);
+
+
+    size_t paths = 5;
     unsigned long steps = 100;
     double maturity = 5;
     double tau = 0.25;
     int numer = 2;
-    std::vector<double> init_rates {0.01,0.02,0.03};
-    std::vector<double> sigma {0.3,0.4,0.5};
-    std::vector<std::vector<double>> corr {{1,0.9, 0.8},{0.9,1,0.7},{0.8,0.7,1}};
-    simulationlib::LiborRateSimulation<double> lmm_test{paths, steps,maturity, tau, numer, init_rates, sigma, corr};
-    std::vector<std::vector<double>> rates = lmm_test.LiborSimulation();
+    std::vector<double> init_rates {0.05, 0.06, 0.07, 0.09, 0.1,0.16, 0.23,0.49,0.82,1.15,1.69, 1.88};
+    std::vector<double> init_tenors {1.0/12.0, 1.0/6.0, 0.25, 0.5, 1,2,3,5,7,10,20,30};
+    std::vector<double> sigma {0.3,0.4,0.5, 0.6, 0.7};
+    std::vector<std::vector<double>> corr {{1,0.9, 0.8, 0.5, 0.85},{0.9,1,0.87, 0.95, 0.75},{0.8,0.87,1,0.65,0.4},
+            {0.5,0.95,0.65,1,0.3},{0.85,0.75,0.4,0.3,1}};
+    simulationlib::LiborRateSimulation<double> lmm_test{paths, steps,maturity, tau, numer, init_rates, init_tenors, sigma, corr};
+    std::vector<std::vector<double>> LiborRates = lmm_test.LiborSimulation();
 
     return 1;
 }
