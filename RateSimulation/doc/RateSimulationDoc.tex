@@ -1,0 +1,51 @@
+\documentclass[12pt]{article}
+\usepackage{amsmath}
+
+\title{Simulate Libor Market Model}
+\begin{document}
+\maketitle
+
+
+\section{Model}
+
+
+Libor Market Model,
+\begin{equation}
+    dL_n(t_i)=\mu_n L_n(t_i)dt+\sigma_n(t_i)L_n(t_i)dW_n(t_i)
+\end{equation}
+\\
+Discrete form:
+\begin{equation}
+    L_n(t_i+1)=L_n(t_i)+\mu_n L_n(t)(t_{i+1}-t_i)+\sigma_n(t_i) L_n(t_i) \sqrt{t_{i+1}-t_i}Z^i_n
+\end{equation}
+\\
+where, $p$ is the numeraire.
+\begin{equation}
+    \mu_n =\left\{
+\begin{aligned}
+& -\sum_{k=n+1}^p \frac{\tau_k L_n(t)}{1+\tau_k L_n(t)}\rho_{kn} dt, n<p\\
+& 0, n = p\\
+& \sum_{k=p+1}^j \frac{\tau_k L_n(t)}{1+\tau_k L_n(t)}\rho_{kn} dt, n>p\\
+\end{aligned}
+\right.
+\end{equation}
+
+\section{Simulation Process}
+
+Use time 0 rates to solve $L_0(t_i)$.
+\\
+Loop all the time step
+\\
+Loop Libor rates
+\\
+Calculate $\mu_n$ based on the comparsion of numeraire and $n$.
+\\
+Calculate $L_n(t_i+1)$
+\\
+End Libor rates
+\\
+End time step loop
+\bibliographystyle{abbrv}
+\bibliography{main}
+
+\end{document}
