@@ -89,25 +89,26 @@ namespace simulationlib{
     template <class T>
     class LiborRateSimulation{
     public:
-        LiborRateSimulation(int simulation_nums, double simulation_length,unsigned long steps, double maturity,
-                            double tau,std::vector<T> rates, std::vector<T> tenors)
-        :m_simulation_nums(simulation_nums),m_simulation_length(simulation_length),m_steps(steps),m_maturity(maturity),
-        m_tau(tau),m_ri(tenors, rates),m_init_rates(maturity/tau-1, 0),
-        m_sigma(maturity/tau-1, 0), m_corr(maturity/tau-1, std::vector<T> (maturity/tau-1,0)){
-            m_dt = simulation_length/steps;
-            m_num_rates = maturity/tau-1;
+        LiborRateSimulation(int simulation_nums, double projection_years,unsigned long num_time_steps, double maturity,
+                            double rate_freq,std::vector<T> rates, std::vector<T> tenors)
+        :m_simulation_nums(simulation_nums),m_projection_years(projection_years),m_num_time_steps(num_time_steps),m_maturity(maturity),
+         m_rate_freq(rate_freq),m_ri(tenors, rates),m_init_rates(maturity/rate_freq-1, 0),
+        m_sigma(maturity/rate_freq-1, 0), m_corr(maturity/rate_freq-1, std::vector<T> (maturity/rate_freq-1,0)),
+        m_output(m_simulation_nums){
+            m_dt = projection_years/num_time_steps;
+            m_num_rates = maturity/rate_freq-1;
         };
 
         void setInitRate(){//get initial rates from time 0 rate curve
-            for(int m = 1; m <= m_num_rates;++m)
-                m_init_rates[m-1] = m_ri.getRate(m_tau*m,m_tau*m+m_tau);
+            for(int i = 1; i <= m_num_rates;++i)
+                m_init_rates[i-1] = m_ri.getRate(m_rate_freq*i,m_rate_freq*i+m_rate_freq);
         }
 
         void setCorr(double rho_inf, double lambda, double kai){
             for(int i = 1; i <= m_num_rates;++i){
                 for(int j = 1; j <= m_num_rates;++j){
                     m_corr[i-1][j-1] = rho_inf+(1-rho_inf)*
-                            exp(-lambda*abs(i*m_tau-j*m_tau)/(1+kai*std::min(i*m_tau,j*m_tau)));
+                            exp(-lambda*abs(i*m_rate_freq-j*m_rate_freq)/(1+kai*std::min(i*m_rate_freq,j*m_rate_freq)));
                 }
             }
         }
@@ -117,37 +118,64 @@ namespace simulationlib{
 
 
         void setVol(double a, double b, double c, double d){
-            for(int m = 1; m <= m_num_rates;++m){//this vol form allows a humped shape of instantaneous volatility
-                m_sigma[m-1] = (a*(m*m_tau)+d)*exp(-b*(m*m_tau))+c;
+            for(int i = 1; i <= m_num_rates;++i){//this vol form allows a humped shape of instantaneous volatility
+                m_sigma[i-1] = (a*(i*m_rate_freq)+d)*exp(-b*(i*m_rate_freq))+c;
             }
         }
 
         T getVol(double t){
-            return m_sigma[t/m_tau-1];
+            return m_sigma[t/m_rate_freq-1];
+        }
+
+        T validateVol(int rate_index, std::vector<int> vol_tenors){
+            //Target Variance
+            T target_var = 0.0;
+            for(int i = 0; i < vol_tenors.size(); ++i){//loop all the vol_tenors
+                target_var+=getVol(vol_tenors[i]*m_rate_freq)*getVol(vol_tenors[i]*m_rate_freq)*m_dt;
+            }
+
+            //Calculated Variance
+            std::vector<T> selected_rates(m_simulation_nums, 0.0);
+            std::vector<T> selected_norm_rates(m_simulation_nums, 0.0);
+            T square_sum = 0.0, sum = 0.0,calc_var = 0.0;
+            for(int i = 0; i < m_simulation_nums; ++i){//number of simulation
+                selected_rates[i]= m_output[i][rate_index-1];
+                selected_norm_rates[i] = log(selected_rates[i]);
+                square_sum += selected_norm_rates[i]*selected_norm_rates[i];
+                sum += selected_norm_rates[i];
+            }
+            calc_var = square_sum/(m_simulation_nums-1) - sum*sum/(m_simulation_nums-1)/m_simulation_nums;
+
+            T test_stat = (m_simulation_nums-1)*sqrt(calc_var/target_var);//Test Statistic
+            
+            std::cout<<"Test Statistic: "<<test_stat<<", Degree of Freedom: "<<m_simulation_nums-1<<std::endl;
+            std::cout<<"Calculated Variance: "<<calc_var<<", Target Variance: "<<target_var
+            <<", ABS Error: "<<abs(calc_var-target_var)<<", Percentage Error: "<<calc_var/target_var - 1.0<<std::endl;
+
+            return calc_var/target_var - 1.0;
         }
 
         std::vector<std::vector<T>> LiborSimulation(){
-            std::vector<std::vector<T>> output_rates;
             for(int i = 0; i < m_simulation_nums; ++i){//number of simulation
-                output_rates.push_back(LiborSimulationOnePath());
+                m_output[i]= LiborSimulationOnePath();
             }
-            return output_rates;
+            return m_output;
         }
 
         std::vector<T> LiborSimulationOnePath(){
-            RandomMatrix<T> rand_matrix(m_num_rates, m_steps,0,1);//generate random number matrix
+            RandomMatrix<T> rand_matrix(m_num_rates, m_num_time_steps,0,1);//generate random number matrix
             double mu = 0;//drift term
             std::vector<T> F = m_init_rates;
 
-            for(unsigned long i = 0; i < m_steps;++i){//time step
+            for(unsigned long i = 0; i < m_num_time_steps;++i){//time step
                 for(int j = 1; j <= m_num_rates; ++j){//Libor rates
                     mu = 0;
                     for (int k = 1; k <= j; ++k) {//calculate drift term
-                        mu += (getCorr(j,k) * getVol(k*m_tau) * getVol(j*m_tau) * m_tau * F[k - 1])
-                              / (1 + m_tau * F[k - 1]) * m_dt;
+                        mu += (getCorr(j,k) * getVol(k*m_rate_freq) * getVol(j*m_rate_freq) * m_rate_freq * F[k - 1])
+                              / (1 + m_rate_freq * F[k - 1]) * m_dt;
                     }
-                    F[j-1]=F[j-1]*exp(mu*m_dt - 0.5*getVol(j*m_tau)*getVol(j*m_tau)*m_dt+
-                                              getVol(j*m_tau)*rand_matrix.getRandNum(j-1,i)*sqrt(m_dt));
+                    F[j-1]=F[j-1]*exp(mu*m_dt - 0.5*getVol(j*m_rate_freq)*getVol(j*m_rate_freq)*m_dt+
+                                              getVol(j*m_rate_freq)*rand_matrix.getRandNum(j-1,i)*sqrt(m_dt));
                 }
             }
             return F;
@@ -159,43 +187,57 @@ namespace simulationlib{
         int m_simulation_nums;
 
         //simulation steps
-        double m_simulation_length;//simulation years
-        unsigned long m_steps;//number of steps
+        double m_projection_years;//simulation years
+        unsigned long m_num_time_steps;//number of steps
         double m_dt;//length of simulation step
 
         //Libor Curves
         double m_maturity;//time to maturity of Libor Curve
-        double m_tau;//libor frequency
+        double m_rate_freq;//libor frequency
         int m_num_rates;//number of Libor rates
 
         std::vector<T> m_init_rates;
         std::vector<std::vector<T>> m_corr;//correlation matrix
         std::vector<T> m_sigma;//rate vol
+        std::vector<std::vector<T>> m_output;
     };
 }
 
 int main(){
 
-    int simulation_nums = 1000;
-    double simulation_length = 5;
-    unsigned long steps = 20;
-    double maturity = 30;
-    double tau = 0.25;
+    int simulation_nums = 1000000;//number of simulations
+
+    double projection_years = 0.75;//years of projection
+    unsigned long num_time_steps = 3;//number of time steps
+    //projection_years/num_time_steps = length of each time step
+
+    double maturity = 1;//term structure maturity
+    double rate_freq = 0.25;//libor length
+    //maturity/rate_freq = number of rates in term structure
+
+    //time 0 rates
     std::vector<double> init_rates {0.0005, 0.0006, 0.0007, 0.0009, 0.001,0.0016, 0.0023,0.0049,0.0082,0.0115,0.0169, 0.0188};
     std::vector<double> init_tenors {1.0/12.0, 1.0/6.0, 0.25, 0.5, 1,2,3,5,7,10,20,30};
-    simulationlib::LiborRateSimulation<double> lmm_test{simulation_nums,simulation_length, steps,maturity,
-                                                        tau, init_rates, init_tenors};
+    simulationlib::LiborRateSimulation<double> lmm_test{simulation_nums,projection_years, num_time_steps,maturity,
+                                                        rate_freq, init_rates, init_tenors};
 
+    //set vol assumption
     double a = 0.19, b = 0.97, c = 0.08, d = 0.01;
     lmm_test.setVol(a, b, c, d);
 
-
+    //set correlation assumption
     double rho_inf = 0.99, lambda = 0.5, kai = 0.5;
     lmm_test.setCorr(rho_inf, lambda, kai);
 
+    //set time 0 rates
     lmm_test.setInitRate();
 
+    //simulation
     std::vector<std::vector<double>> libor_rates = lmm_test.LiborSimulation();
 
+
+    int rate_index = 3;
+    std::vector<int> vol_tenors{3,3,3};
+    double error = lmm_test.validateVol(rate_index, vol_tenors);
     return 1;
 }

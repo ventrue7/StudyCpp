@@ -1,0 +1,122 @@
+\documentclass[12pt]{article}
+\usepackage{amsmath}
+
+\title{LIBOR Market Model Result Analysis}
+\begin{document}
+\maketitle
+
+
+\section{Validate Volatility Assumption}
+
+After we generated LIBOR rates, we need to validate if the standard deviation of rates distribution still match the given volatility assumption.
+
+\subsection{Theory}
+
+\subsubsection{Volatility Parametrization}
+Volatility formula, 
+\begin{equation}
+    \sigma_i(t) = [a(T_{i-1}-t)+d]e^{-b(T_{i-1}-t)}+d
+\end{equation}
+\\
+This form allows a humped shape in the graph of the instantaneous volatility
+
+\subsubsection{LIBOR Market Model Simulation}
+LIBOR Market Model,
+\begin{equation}
+    dL_n(t_i)=\mu_n(t_i) L_n(t_i)dt+\sigma_n(t_i)L_n(t_i)dW_n(t_i)
+\end{equation}
+\\
+Discrete form,
+\begin{equation}
+    L_n(t_{i+1})=L_n(t_i)+\mu_n(t_i) L_n(t)(t_{i+1}-t_i)+\sigma_n(t_i) L_n(t_i) \sqrt{t_{i+1}-t_i}Z^i_n
+\end{equation}
+\\
+Integrate this equation, 
+\begin{equation}
+    L_n(t_{i+1})=L_n(t_i)
+    \exp{\{(\mu_n(t_i)+\frac{1}{2}\sigma^2_n(t_i))(t_{i+1}-t_i)+\sigma_n(t_i) \sqrt{t_{i+1}-t_i}Z^i_n\}} 
+\end{equation}
+
+
+\subsubsection{The distribution of LIBOR rates}
+The rates from LIBOR Market Model follow a lognormal distrinbution,
+$
+    log(L_n(t_{i+1})) \sim N\left( log(L_n(t_{i}))+(\mu_n(t_i)+\frac{1}{2}\sigma^2_n(t_i))(t_{i+1}-t_i),
+    \sigma^2_n(t_i) (t_{i+1}-t_i)        \right)
+$.
+We need to validate if the variance of $log(L_n(t_{i+1}))$ distribution matches $\sigma^2_n(t_i) (t_{i+1}-t_i)$.
+
+\subsection{An Example}
+We would like to validate the volatility assumption of 3 Month length LIBOR rate starting from 9 Month to 12 Month with forward starting at 9 Month,
+we will write it as $L_{0.75}(0.75)$ for short.
+
+\subsubsection{Calculate the Volatility}
+We used $L_{0.75}(0.75)$ to simulate $L_{0.75}(0.5)$, and $L_{0.75}(0.5)$ is from simulate through $L_{0.75}(0.25)$. Finally, we have 
+\begin{equation}
+    L_n(t_{k+1})\sim N\left( log(L_n(t_{0}))+\sum^k_{i=1}(\mu_n(t_i)+\frac{1}{2}\sigma^2_n(t_i))(t_{i+1}-t_i),
+    \sum^k_{i=1} \sigma^2_n(t_i) (t_{i+1}-t_i)        \right)
+\end{equation}
+\\
+In the volatility formula, $t$ is 0.25, 0.5, 0.75, $T_i$ is 1, 1.25, 1.5. In this example, we use $a = 0.19, b = 0.97, c = 0.08, d = 0.01$, we obtained  
+$\sum^k_{i=1}\sigma^2_n(t_i) (t_{i+1}-t_i) = 0.017712$.
+
+\subsubsection{Calculate the Variance}
+We can take the log of the rates and apply sample variance formula to get the variance.
+
+\subsubsection{Chi-Square Test for the Variance}
+We can use a Chi-Square Test to validate if $\sigma^2 = \sigma^2_0$.
+\\
+$H_0:$
+$
+\sigma^2 = \sigma^2_0
+$
+\\
+$H_a:$
+$
+\sigma^2 \neq \sigma^2_0
+$
+\\
+Test Statistic:
+$
+T = \frac{N-1}{S^2/\sigma_0^2}
+$
+\\
+where, $N$ is the smaple size, $S$ is the sample standard, $\sigma_0$ is the target standard deviation.
+\\
+Critical region: Reject $H_0$ if $T < \chi^2_{\alpha/2,N-1}$ or $T > \chi^2_{1-\alpha/2,N-1}$
+
+\subsubsection{Result}
+Absoulate Error: $ABS(\hat{\sigma^2} -\sigma^2_0)$.
+\\
+Percentage Error: $\frac{\hat{\sigma^2}-\sigma^2_0}{\sigma^2_0}$.
+\\
+\\
+$N = 100$, 
+Calculated Variance: 0.0147492, Target Variance: 0.017712, ABS Error: 0.00296284, Percentage Error: -0.167278
+\\
+\\
+$N = 1000$, 
+Calculated Variance: 0.0179749, Target Variance: 0.017712, ABS Error: 0.000262848, Percentage Error: 0.0148401
+\\
+\\
+$N = 10000$,
+Calculated Variance: 0.0175451, Target Variance: 0.017712, ABS Error: 0.00016692, Percentage Error: -0.00942413
+\\
+\\
+$N = 100000$,
+Calculated Variance: 0.0178083, Target Variance: 0.017712, ABS Error: 9.63033e-05, Percentage Error: 0.00543717
+\\
+\\
+$N = 1000000$,
+Calculated Variance: 0.0177014, Target Variance: 0.017712, ABS Error: 1.06467e-05, Percentage Error: -0.000601098
+\\
+\\
+$N = 100$, Test Statistic: 90.3411, Degree of Freedom: 99, 
+$\chi^2_{0.025,99} = 73.361$, $\chi^2_{0.975,99} = 128.422$
+The test statistic value of 90.3411 is within the range of $\left(\chi^2_{\alpha/2,N-1}, \chi^2_{1-\alpha/2,N-1}\right)$,
+so we cannot reject the null hypothesis.
+
+\bibliographystyle{abbrv}
+\bibliography{main}
+
+\end{document}
